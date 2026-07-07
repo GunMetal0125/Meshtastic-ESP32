@@ -654,3 +654,84 @@ if (p.payload.indexOf("BAT:") != -1) {
 if (pct <= 10) {
   showText("LOW BATTERY!\n" + String(pct) + "%");
 }
+Ping → Node 12345
+RTT: 842 ms
+pinMode(PING_BUTTON, INPUT_PULLUP);
+unsigned long pingStart = 0;
+String pingTarget = "";      // node we are pinging
+String pingPacketID = "";    // ID of the ping packet
+bool waitingForPong = false;
+String buildPing(const String &destNode) {
+  String packetID = String(random(1000, 999999));
+  pingPacketID = packetID;
+  pingTarget = destNode;
+  pingStart = millis();
+  waitingForPong = true;
+
+  String packet = "TYPE:PING"
+                  "|SRC:" + NODE_ID +
+                  "|DEST:" + destNode +
+                  "|ID:" + packetID +
+                  "|TTL:3"
+                  "|PING";
+
+  return packet;
+}
+String buildPong(const MeshPacket &p) {
+  String packet = "TYPE:PONG"
+                  "|SRC:" + NODE_ID +
+                  "|DEST:" + p.src +
+                  "|ID:" + p.id +
+                  "|TTL:3"
+                  "|PONG";
+
+  return packet;
+}
+// If PING packet addressed to me → reply with PONG
+if (p.type == "PING" && p.dest == NODE_ID) {
+  String pong = buildPong(p);
+  String enc = aesEncrypt(pong);
+  LoRa.beginPacket();
+  LoRa.print(enc);
+  LoRa.endPacket();
+
+  showText("PING from:\n" + p.src);
+}
+
+// If PONG packet addressed to me → calculate RTT
+if (p.type == "PONG" && p.dest == NODE_ID) {
+  if (waitingForPong && p.id == pingPacketID) {
+    unsigned long rtt = millis() - pingStart;
+    waitingForPong = false;
+
+    showText("PONG from:\n" + p.src + "\nRTT: " + String(rtt) + " ms");
+  }
+}
+if (digitalRead(PING_BUTTON) == LOW && !waitingForPong) {
+  String packet = buildPing("TARGET_NODE_ID");  // replace with real node ID
+  String enc = aesEncrypt(packet);
+
+  LoRa.beginPacket();
+  LoRa.print(enc);
+  LoRa.endPacket();
+
+  showText("Ping sent to:\nTARGET_NODE_ID");
+  delay(300);  // debounce
+}
+static unsigned long lastPing = 0;
+if (millis() - lastPing > 20000 && !waitingForPong) {
+  lastPing = millis();
+
+  String packet = buildPing("TARGET_NODE_ID");
+  String enc = aesEncrypt(packet);
+
+  LoRa.beginPacket();
+  LoRa.print(enc);
+  LoRa.endPacket();
+
+  showText("Auto Ping →\nTARGET_NODE_ID");
+}
+if (waitingForPong && millis() - pingStart > 5000) {
+  waitingForPong = false;
+  showText("Ping timeout!");
+}
