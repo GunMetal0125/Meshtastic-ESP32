@@ -402,3 +402,10 @@ String aesDecrypt(const String &cipher) {
 
   return decoded;
 }
+String msg = "GPS:" + String(lat, 6) + "," + String(lon, 6);
+String msg = "GPS:" + String(lat, 6) + "," + String(lon, 6);
+String enc = aesEncrypt(msg);
+
+LoRa.beginPacket();
+LoRa.print(enc);
+LoRa.endPacket();
