@@ -609,3 +609,48 @@ for (auto &entry : ackTimeout) {
     ackTimeout[packetID] = millis() + 5000;
   }
 }
+Battery + → R1 → ADC pin → R2 → GND
+#define BATTERY_PIN 34   // ADC pin
+
+float readBatteryVoltage() {
+  int raw = analogRead(BATTERY_PIN);
+  float voltage = (raw / 4095.0) * 3.3;  // ADC → voltage
+  voltage *= 2.0;  // undo voltage divider
+  return voltage;
+}
+
+int batteryPercent(float v) {
+  // Simple LiPo curve
+  if (v >= 4.20) return 100;
+  if (v >= 4.00) return 90;
+  if (v >= 3.85) return 75;
+  if (v >= 3.70) return 50;
+  if (v >= 3.55) return 25;
+  if (v >= 3.40) return 10;
+  return 0;
+}
+analogReadResolution(12);
+analogSetAttenuation(ADC_11db);  // allows up to ~3.6V input
+float v = readBatteryVoltage();
+int pct = batteryPercent(v);
+
+display.setCursor(0, 50);
+display.print("Bat: ");
+display.print(v, 2);
+display.print("V ");
+display.print(pct);
+display.println("%");
+display.display();
+float v = readBatteryVoltage();
+int pct = batteryPercent(v);
+
+String msg = "GPS:" + String(lat, 6) + "," + String(lon, 6) +
+             "|BAT:" + String(pct) + "%";
+if (p.payload.indexOf("BAT:") != -1) {
+  int idx = p.payload.indexOf("BAT:");
+  String bat = p.payload.substring(idx + 4);
+  Serial.println("Battery from node: " + bat);
+}
+if (pct <= 10) {
+  showText("LOW BATTERY!\n" + String(pct) + "%");
+}
