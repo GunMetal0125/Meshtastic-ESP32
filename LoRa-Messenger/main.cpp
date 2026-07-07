@@ -321,3 +321,9 @@ String decrypt(const String &cipher) {
   return encrypt(cipher);
 }
 String msg = "GPS:" + String(lat, 6) + "," + String(lon, 6);
+String msg = "GPS:" + String(lat, 6) + "," + String(lon, 6);
+String enc = encrypt(msg);
+
+LoRa.beginPacket();
+LoRa.print(enc);
+LoRa.endPacket();
