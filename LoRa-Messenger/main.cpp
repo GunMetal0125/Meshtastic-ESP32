@@ -320,3 +320,4 @@ String decrypt(const String &cipher) {
   // XOR again with same key to get original
   return encrypt(cipher);
 }
+String msg = "GPS:" + String(lat, 6) + "," + String(lon, 6);
