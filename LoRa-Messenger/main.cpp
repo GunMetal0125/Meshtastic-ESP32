@@ -501,3 +501,111 @@ if (packetSize) {
   // Forward packet to next node
   forwardPacket(p);
 }
+ACK:<packetID>
+std::map<String, bool> ackReceived;   // packetID → true/false
+std::map<String, unsigned long> ackTimeout;  // packetID → timestamp
+String buildAck(const String &packetID) {
+  return "ACK:" + packetID;
+}
+String buildPacket(const String &payload, const String &destNode) {
+  String packetID = String(random(1000, 999999));
+  int ttl = 3;
+
+  String packet = "TYPE:DATA" 
+                  "|SRC:" + NODE_ID +
+                  "|DEST:" + destNode +
+                  "|ID:" + packetID +
+                  "|TTL:" + String(ttl) +
+                  "|" + payload;
+
+  // Track ACK timeout
+  ackReceived[packetID] = false;
+  ackTimeout[packetID] = millis() + 5000;  // 5 seconds
+
+  return packet;
+}
+struct MeshPacket {
+  String type;
+  String src;
+  String dest;
+  String id;
+  int ttl;
+  String payload;
+};
+
+MeshPacket parsePacket(const String &raw) {
+  MeshPacket p;
+
+  int t1 = raw.indexOf("TYPE:");
+  int s1 = raw.indexOf("|SRC:");
+  int d1 = raw.indexOf("|DEST:");
+  int i1 = raw.indexOf("|ID:");
+  int ttl1 = raw.indexOf("|TTL:");
+  int p1 = raw.indexOf("|", ttl1 + 5);
+
+  p.type = raw.substring(t1 + 5, s1);
+  p.src = raw.substring(s1 + 5, d1);
+  p.dest = raw.substring(d1 + 6, i1);
+  p.id = raw.substring(i1 + 4, ttl1);
+  p.ttl = raw.substring(ttl1 + 5, p1).toInt();
+  p.payload = raw.substring(p1 + 1);
+
+  return p;
+}
+void sendAck(const String &packetID, const String &destNode) {
+  String ackPacket = "TYPE:ACK"
+                     "|SRC:" + NODE_ID +
+                     "|DEST:" + destNode +
+                     "|ID:" + packetID +
+                     "|TTL:3"
+                     "|OK";
+
+  String enc = aesEncrypt(ackPacket);
+
+  LoRa.beginPacket();
+  LoRa.print(enc);
+  LoRa.endPacket();
+}
+int packetSize = LoRa.parsePacket();
+if (packetSize) {
+  String incoming = "";
+  while (LoRa.available()) {
+    incoming += (char)LoRa.read();
+  }
+
+  String plain = aesDecrypt(incoming);
+  MeshPacket p = parsePacket(plain);
+
+  // Ignore duplicates
+  if (seenPackets[p.id]) return;
+  seenPackets[p.id] = true;
+
+  // If ACK packet
+  if (p.type == "ACK") {
+    ackReceived[p.id] = true;
+    showText("ACK received\nID:" + p.id);
+    return;
+  }
+
+  // If DATA packet addressed to me → process + ACK
+  if (p.dest == NODE_ID) {
+    showText("RX:\n" + p.payload);
+    sendAck(p.id, p.src);
+  }
+
+  // Forward packet through mesh
+  forwardPacket(p);
+}
+for (auto &entry : ackTimeout) {
+  String packetID = entry.first;
+  unsigned long timeout = entry.second;
+
+  if (!ackReceived[packetID] && millis() > timeout) {
+    showText("Retrying...\nID:" + packetID);
+
+    // Re-send last message (simple version)
+    // You can store full packets if you want more advanced retries
+    // For now, just notify user
+    ackTimeout[packetID] = millis() + 5000;
+  }
+}
