@@ -735,3 +735,60 @@ if (waitingForPong && millis() - pingStart > 5000) {
   waitingForPong = false;
   showText("Ping timeout!");
 }
+struct QueueItem {
+  String packetID;
+  String encryptedPacket;
+  unsigned long timestamp;
+  int retryCount;
+  int maxRetries;
+};
+
+std::vector<QueueItem> messageQueue;
+void queueMessage(const String &packetID, const String &encryptedPacket) {
+  QueueItem item;
+  item.packetID = packetID;
+  item.encryptedPacket = encryptedPacket;
+  item.timestamp = millis();
+  item.retryCount = 0;
+  item.maxRetries = 3;
+
+  messageQueue.push_back(item);
+}
+LoRa.beginPacket();
+LoRa.print(enc);
+LoRa.endPacket();
+LoRa.beginPacket();
+LoRa.print(enc);
+LoRa.endPacket();
+
+// Add to queue
+queueMessage(packetID, enc);
+if (!messageQueue.empty()) {
+  QueueItem &item = messageQueue.front();
+
+  // If ACK received → remove from queue
+  if (ackReceived[item.packetID]) {
+    messageQueue.erase(messageQueue.begin());
+    showText("Delivered:\nID " + item.packetID);
+    return;
+  }
+
+  // Retry every 5 seconds
+  if (millis() - item.timestamp > 5000) {
+    if (item.retryCount < item.maxRetries) {
+      item.retryCount++;
+      item.timestamp = millis();
+
+      LoRa.beginPacket();
+      LoRa.print(item.encryptedPacket);
+      LoRa.endPacket();
+
+      showText("Retry " + String(item.retryCount) +
+               "\nID " + item.packetID);
+    } else {
+      showText("FAILED:\nID " + item.packetID);
+      messageQueue.erase(messageQueue.begin());
+    }
+  }
+}
+ackReceived[p.id] = true;
