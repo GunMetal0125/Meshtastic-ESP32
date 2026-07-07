@@ -304,3 +304,19 @@ void loop() {
     showText("Received:\n" + incoming);
   }
 }
+// Simple XOR "encryption" with shared key
+const char *SHARED_KEY = "MySecretKey123";  // change this, same on all devices
+
+String encrypt(const String &plain) {
+  String out = plain;
+  int keyLen = strlen(SHARED_KEY);
+  for (int i = 0; i < out.length(); i++) {
+    out[i] = out[i] ^ SHARED_KEY[i % keyLen];
+  }
+  return out;
+}
+
+String decrypt(const String &cipher) {
+  // XOR again with same key to get original
+  return encrypt(cipher);
+}
