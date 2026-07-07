@@ -409,3 +409,14 @@ String enc = aesEncrypt(msg);
 LoRa.beginPacket();
 LoRa.print(enc);
 LoRa.endPacket();
+String incoming = "";
+String incoming = "";
+while (LoRa.available()) {
+  incoming += (char)LoRa.read();
+}
+
+String plain = aesDecrypt(incoming);
+
+Serial.println("Received (AES): " + incoming);
+Serial.println("Decrypted: " + plain);
+showText("Received:\n" + plain);
