@@ -327,3 +327,26 @@ String enc = encrypt(msg);
 LoRa.beginPacket();
 LoRa.print(enc);
 LoRa.endPacket();
+int packetSize = LoRa.parsePacket();
+if (packetSize) {
+  String incoming = "";
+  while (LoRa.available()) {
+    incoming += (char)LoRa.read();
+  }
+
+  Serial.println("Received: " + incoming);
+  showText("Received:\n" + incoming);
+}
+int packetSize = LoRa.parsePacket();
+if (packetSize) {
+  String incoming = "";
+  while (LoRa.available()) {
+    incoming += (char)LoRa.read();
+  }
+
+  String plain = decrypt(incoming);
+
+  Serial.println("Received (enc): " + incoming);
+  Serial.println("Decrypted: " + plain);
+  showText("Received:\n" + plain);
+}
