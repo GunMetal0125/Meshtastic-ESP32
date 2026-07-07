@@ -977,3 +977,164 @@ String ackPacket =
     "|HASH:" + String(CH_HASH) +
     "|NAME:" + DEVICE_NAME +
     "|OK";
+|TYPE:<type>
+String packet =
+    "TYPE:GPS"
+    "|SRC:" + NODE_ID +
+    "|DEST:" + destNode +
+    "|ID:" + packetID +
+    "|TTL:3"
+    "|CH:" + String(CHANNEL_NUMBER) +
+    "|HASH:" + String(CH_HASH) +
+    "|" + payload;
+struct MeshPacket {
+  String type;
+  String src;
+  String dest;
+  String id;
+  int ttl;
+  int channel;
+  uint32_t hash;
+  String payload;
+};
+if (p.type == "TEXT") {
+  String senderName = deviceNames.count(p.src) ? deviceNames[p.src] : p.src;
+  showText(senderName + ":\n" + p.payload);
+}
+
+else if (p.type == "GPS") {
+  showText("GPS from:\n" + p.src + "\n" + p.payload);
+}
+
+else if (p.type == "BAT") {
+  showText("Battery from:\n" + p.src + "\n" + p.payload);
+}
+
+else if (p.type == "ALERT") {
+  showText("ALERT!\n" + p.payload);
+}
+
+else if (p.type == "PING") {
+  // already implemented
+}
+
+else if (p.type == "PONG") {
+  // already implemented
+}
+
+else if (p.type == "NAME") {
+  // already implemented
+}
+
+else if (p.type == "ADMIN") {
+  // admin commands (sleep, channel, etc.)
+}
+String buildTextMessage(const String &text, const String &destNode) {
+  String packetID = String(random(1000, 999999));
+
+  String packet =
+      "TYPE:TEXT"
+      "|SRC:" + NODE_ID +
+      "|DEST:" + destNode +
+      "|ID:" + packetID +
+      "|TTL:3"
+      "|CH:" + String(CHANNEL_NUMBER) +
+      "|HASH:" + String(CH_HASH) +
+      "|MSG:" + text;
+
+  String enc = aesEncrypt(packet);
+  queueMessage(packetID, enc);
+  return enc;
+}
+String buildTextMessage(const String &text, const String &destNode) {
+  String packetID = String(random(1000, 999999));
+
+  String packet =
+      "TYPE:TEXT"
+      "|SRC:" + NODE_ID +
+      "|DEST:" + destNode +
+      "|ID:" + packetID +
+      "|TTL:3"
+      "|CH:" + String(CHANNEL_NUMBER) +
+      "|HASH:" + String(CH_HASH) +
+      "|MSG:" + text;
+
+  String enc = aesEncrypt(packet);
+  queueMessage(packetID, enc);
+  return enc;
+}
+String buildBatteryMessage(const String &destNode) {
+  float v = readBatteryVoltage();
+  int pct = batteryPercent(v);
+  String packetID = String(random(1000, 999999));
+
+  String packet =
+      "TYPE:BAT"
+      "|SRC:" + NODE_ID +
+      "|DEST:" + destNode +
+      "|ID:" + packetID +
+      "|TTL:3"
+      "|CH:" + String(CHANNEL_NUMBER) +
+      "|HASH:" + String(CH_HASH) +
+      "|BAT:" + String(pct) + "%";
+
+  String enc = aesEncrypt(packet);
+  queueMessage(packetID, enc);
+  return enc;
+}
+String buildBatteryMessage(const String &destNode) {
+  float v = readBatteryVoltage();
+  int pct = batteryPercent(v);
+  String packetID = String(random(1000, 999999));
+
+  String packet =
+      "TYPE:BAT"
+      "|SRC:" + NODE_ID +
+      "|DEST:" + destNode +
+      "|ID:" + packetID +
+      "|TTL:3"
+      "|CH:" + String(CHANNEL_NUMBER) +
+      "|HASH:" + String(CH_HASH) +
+      "|BAT:" + String(pct) + "%";
+
+  String enc = aesEncrypt(packet);
+  queueMessage(packetID, enc);
+  return enc;
+}
+String buildAlert(const String &msg) {
+  String packetID = String(random(1000, 999999));
+
+  String packet =
+      "TYPE:ALERT"
+      "|SRC:" + NODE_ID +
+      "|DEST:ALL"
+      "|ID:" + packetID +
+      "|TTL:3"
+      "|CH:" + String(CHANNEL_NUMBER) +
+      "|HASH:" + String(CH_HASH) +
+      "|ALERT:" + msg;
+
+  String enc = aesEncrypt(packet);
+  queueMessage(packetID, enc);
+  return enc;
+}
+String buildAdmin(const String &cmd) {
+  String packetID = String(random(1000, 999999));
+
+  String packet =
+      "TYPE:ADMIN"
+      "|SRC:" + NODE_ID +
+      "|DEST:ALL"
+      "|ID:" + packetID +
+      "|TTL:3"
+      "|CH:" + String(CHANNEL_NUMBER) +
+      "|HASH:" + String(CH_HASH) +
+      "|CMD:" + cmd;
+
+  String enc = aesEncrypt(packet);
+  queueMessage(packetID, enc);
+  return enc;
+}
+display.setCursor(0, 30);
+display.println("MsgTypes: OK");
+display.display();
