@@ -792,3 +792,118 @@ if (!messageQueue.empty()) {
   }
 }
 ackReceived[p.id] = true;
+String CHANNEL_NAME = "Alpha";
+int CHANNEL_NUMBER = 1;
+
+// Optional shared channel key (like Meshtastic)
+String CHANNEL_KEY = "MyChannelKey123";
+String buildPacket(const String &payload, const String &destNode) {
+  String packetID = String(random(1000, 999999));
+  int ttl = 3;
+
+  String packet =
+      "TYPE:DATA"
+      "|SRC:" + NODE_ID +
+      "|DEST:" + destNode +
+      "|ID:" + packetID +
+      "|TTL:" + String(ttl) +
+      "|CH:" + String(CHANNEL_NUMBER) +
+      "|HASH:" + String(CH_HASH) +
+      "|" + payload;
+
+  // Add to queue
+  String enc = aesEncrypt(packet);
+  queueMessage(packetID, enc);
+
+  return packet;
+}
+struct MeshPacket {
+  String type;
+  String src;
+  String dest;
+  String id;
+  int ttl;
+  int channel;
+  uint32_t hash;
+  String payload;
+};
+
+MeshPacket parsePacket(const String &raw) {
+  MeshPacket p;
+
+  int t1 = raw.indexOf("TYPE:");
+  int s1 = raw.indexOf("|SRC:");
+  int d1 = raw.indexOf("|DEST:");
+  int i1 = raw.indexOf("|ID:");
+  int ttl1 = raw.indexOf("|TTL:");
+  int ch1 = raw.indexOf("|CH:");
+  int h1 = raw.indexOf("|HASH:");
+  int p1 = raw.indexOf("|", h1 + 6);
+
+  p.type = raw.substring(t1 + 5, s1);
+  p.src = raw.substring(s1 + 5, d1);
+  p.dest = raw.substring(d1 + 6, i1);
+  p.id = raw.substring(i1 + 4, ttl1);
+  p.ttl = raw.substring(ttl1 + 5, ch1).toInt();
+  p.channel = raw.substring(ch1 + 4, h1).toInt();
+  p.hash = raw.substring(h1 + 6, p1).toInt();
+  p.payload = raw.substring(p1 + 1);
+
+  return p;
+}
+// Reject packets from other channels
+if (p.hash != CH_HASH) {
+  return;  // ignore silently
+}
+display.setCursor(0, 20);
+display.println("Channel: " + CHANNEL_NAME);
+display.display();
+|CH:<channel>
+|HASH:<hash>
+String packet =
+    "TYPE:PING"
+    "|SRC:" + NODE_ID +
+    "|DEST:" + destNode +
+    "|ID:" + packetID +
+    "|TTL:3"
+    "|CH:" + String(CHANNEL_NUMBER) +
+    "|HASH:" + String(CH_HASH) +
+    "|PING";
+int SLEEP_INTERVAL_SECONDS = 30;   // sleep duration
+bool enableSleep = true;           // toggle sleep mode
+esp_sleep_enable_timer_wakeup((uint64_t)SLEEP_INTERVAL_SECONDS * 1000000ULL);
+void sleepOLED() {
+  display.clearDisplay();
+  display.display();
+  display.ssd1306_command(SSD1306_DISPLAYOFF);
+}
+void sleepGPS() {
+  GPSserial.end();  // stop UART
+}
+void goToSleep() {
+  sleepOLED();
+  sleepGPS();
+
+  showText("Sleeping...\n" + String(SLEEP_INTERVAL_SECONDS) + "s");
+
+  delay(200);
+
+  esp_deep_sleep_start();
+}
+if (enableSleep) {
+  static unsigned long awakeStart = millis();
+
+  // Stay awake for 5 seconds to process packets
+  if (millis() - awakeStart > 5000) {
+    goToSleep();
+  }
+}
+display.setCursor(0, 40);
+display.println("Sleep: " + String(SLEEP_INTERVAL_SECONDS) + "s");
+display.display();
+TYPE:CMD|SET_SLEEP:60
+TYPE:CMD|SET_SLEEP:60
+if (p.type == "CMD" && p.payload.startsWith("SET_SLEEP:")) {
+  SLEEP_INTERVAL_SECONDS = p.payload.substring(10).toInt();
+  showText("Sleep set to:\n" + String(SLEEP_INTERVAL_SECONDS) + "s");
+}
