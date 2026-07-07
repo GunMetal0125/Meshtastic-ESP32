@@ -907,3 +907,73 @@ if (p.type == "CMD" && p.payload.startsWith("SET_SLEEP:")) {
   SLEEP_INTERVAL_SECONDS = p.payload.substring(10).toInt();
   showText("Sleep set to:\n" + String(SLEEP_INTERVAL_SECONDS) + "s");
 }
+String DEVICE_NAME = "A-Node";   // your device name
+#include <map>
+
+std::map<String, String> deviceNames;  
+// key = nodeID, value = device name
+String buildNameBroadcast() {
+  String packetID = String(random(1000, 999999));
+
+  String packet =
+      "TYPE:NAME"
+      "|SRC:" + NODE_ID +
+      "|DEST:ALL"
+      "|ID:" + packetID +
+      "|TTL:3"
+      "|CH:" + String(CHANNEL_NUMBER) +
+      "|HASH:" + String(CH_HASH) +
+      "|NAME:" + DEVICE_NAME;
+
+  String enc = aesEncrypt(packet);
+  queueMessage(packetID, enc);
+
+  return enc;
+}
+String enc = buildNameBroadcast();
+LoRa.beginPacket();
+LoRa.print(enc);
+LoRa.endPacket();
+
+showText("Broadcasting name:\n" + DEVICE_NAME);
+if (p.type == "NAME") {
+  // Extract name
+  int idx = p.payload.indexOf("NAME:");
+  if (idx != -1) {
+    String name = p.payload.substring(idx + 5);
+
+    // Store in contact list
+    deviceNames[p.src] = name;
+
+    showText("Name RX:\n" + name);
+  }
+
+  // Forward through mesh
+  forwardPacket(p);
+  return;
+}
+showText("RX:\n" + p.payload);
+String senderName = deviceNames.count(p.src) ? deviceNames[p.src] : p.src;
+showText(senderName + ":\n" + p.payload);
+Bob:
+GPS:41.123456,-73.543210
+123456789012345:
+GPS:41.123456,-73.543210
+showText("PING from:\n" + p.src);
+String senderName = deviceNames.count(p.src) ? deviceNames[p.src] : p.src;
+showText("PING from:\n" + senderName);
+String senderName = deviceNames.count(p.src) ? deviceNames[p.src] : p.src;
+showText("PONG from:\n" + senderName + "\nRTT: " + String(rtt) + " ms");
+String msg = "GPS:" + String(lat, 6) + "," + String(lon, 6) +
+             "|BAT:" + String(pct) + "%" +
+             "|NAME:" + DEVICE_NAME;
+String ackPacket =
+    "TYPE:ACK"
+    "|SRC:" + NODE_ID +
+    "|DEST:" + destNode +
+    "|ID:" + packetID +
+    "|TTL:3"
+    "|CH:" + String(CHANNEL_NUMBER) +
+    "|HASH:" + String(CH_HASH) +
+    "|NAME:" + DEVICE_NAME +
+    "|OK";
