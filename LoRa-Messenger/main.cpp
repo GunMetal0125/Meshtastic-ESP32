@@ -420,3 +420,84 @@ String plain = aesDecrypt(incoming);
 Serial.println("Received (AES): " + incoming);
 Serial.println("Decrypted: " + plain);
 showText("Received:\n" + plain);
+NODE:12345|ID:9981|TTL:3|GPS:41.123456,-73.543210
+#include <map>
+
+String NODE_ID = String((uint32_t)ESP.getEfuseMac());  // unique per ESP32
+std::map<String, bool> seenPackets;  // store packet IDs
+String buildPacket(const String &payload) {
+  String packetID = String(random(1000, 999999));
+  int ttl = 3;  // number of hops allowed
+
+  String packet = "NODE:" + NODE_ID +
+                  "|ID:" + packetID +
+                  "|TTL:" + String(ttl) +
+                  "|" + payload;
+
+  return packet;
+}
+struct MeshPacket {
+  String node;
+  String id;
+  int ttl;
+  String payload;
+};
+
+MeshPacket parsePacket(const String &raw) {
+  MeshPacket p;
+
+  int n1 = raw.indexOf("NODE:");
+  int i1 = raw.indexOf("|ID:");
+  int t1 = raw.indexOf("|TTL:");
+  int p1 = raw.indexOf("|", t1 + 5);
+
+  p.node = raw.substring(n1 + 5, i1);
+  p.id = raw.substring(i1 + 4, t1);
+  p.ttl = raw.substring(t1 + 5, p1).toInt();
+  p.payload = raw.substring(p1 + 1);
+
+  return p;
+}
+void forwardPacket(const MeshPacket &p) {
+  if (p.ttl <= 0) return;
+
+  MeshPacket newP = p;
+  newP.ttl--;
+
+  String out = "NODE:" + newP.node +
+               "|ID:" + newP.id +
+               "|TTL:" + String(newP.ttl) +
+               "|" + newP.payload;
+
+  LoRa.beginPacket();
+  LoRa.print(out);
+  LoRa.endPacket();
+}
+String msg = "GPS:" + String(lat, 6) + "," + String(lon, 6);
+String packet = buildPacket(msg);
+String enc = aesEncrypt(packet);
+
+LoRa.beginPacket();
+LoRa.print(enc);
+LoRa.endPacket();
+int packetSize = LoRa.parsePacket();
+if (packetSize) {
+  String incoming = "";
+  while (LoRa.available()) {
+    incoming += (char)LoRa.read();
+  }
+
+  String plain = aesDecrypt(incoming);
+  MeshPacket p = parsePacket(plain);
+
+  // Ignore duplicates
+  if (seenPackets[p.id]) return;
+  seenPackets[p.id] = true;
+
+  // Display payload
+  Serial.println("Mesh RX: " + p.payload);
+  showText("Mesh RX:\n" + p.payload);
+
+  // Forward packet to next node
+  forwardPacket(p);
+}
