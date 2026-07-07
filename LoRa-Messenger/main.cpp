@@ -350,3 +350,55 @@ if (packetSize) {
   Serial.println("Decrypted: " + plain);
   showText("Received:\n" + plain);
 }
+#include <Crypto.h>
+#include <AES.h>
+#include <string.h>
+
+AES128 aes;
+
+// 16‑byte AES key (must match on all devices)
+uint8_t aesKey[16] = {
+  'M','y','S','e','c','r','e','t','K','e','y','1','2','3','4'
+};
+
+// AES needs 16‑byte blocks
+String aesEncrypt(const String &plain) {
+  int len = plain.length();
+  int paddedLen = ((len + 15) / 16) * 16;
+
+  uint8_t input[paddedLen];
+  uint8_t output[paddedLen];
+
+  memset(input, 0, paddedLen);
+  memcpy(input, plain.c_str(), len);
+
+  for (int i = 0; i < paddedLen; i += 16) {
+    aes.encryptBlock(output + i, input + i, aesKey);
+  }
+
+  String encoded = "";
+  for (int i = 0; i < paddedLen; i++) {
+    encoded += (char)output[i];
+  }
+
+  return encoded;
+}
+
+String aesDecrypt(const String &cipher) {
+  int len = cipher.length();
+  uint8_t input[len];
+  uint8_t output[len];
+
+  memcpy(input, cipher.c_str(), len);
+
+  for (int i = 0; i < len; i += 16) {
+    aes.decryptBlock(output + i, input + i, aesKey);
+  }
+
+  String decoded = "";
+  for (int i = 0; i < len; i++) {
+    decoded += (char)output[i];
+  }
+
+  return decoded;
+}
