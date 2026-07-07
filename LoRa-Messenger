@@ -1,0 +1,13 @@
+Projects/
+│
+├── Flock-Detector/
+│   ├── src/
+│   ├── include/
+│   ├── platformio.ini
+│   └── (all flock detector code)
+│
+└── LoRa-Messenger/
+    ├── src/
+    ├── include/
+    ├── platformio.ini
+    └── (all LoRa messenger code)
